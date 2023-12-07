@@ -63,7 +63,8 @@ final class MovieQuizViewController: UIViewController {
     @IBOutlet private var counterLabel: UILabel!
     @IBOutlet private var textLabel: UILabel!
     @IBOutlet private var imageView: UIImageView!
-    
+    @IBOutlet private var yesButton: UIButton!
+    @IBOutlet private var noButton: UIButton!
     override func viewDidLoad() {
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = 20
@@ -84,6 +85,8 @@ final class MovieQuizViewController: UIViewController {
     }
     private func showAnswerResult(isCorrect: Bool) {
         if isCorrect == true {
+            noButton.isEnabled = false
+            yesButton.isEnabled = false
             correctAnswers += 1
             imageView.layer.borderWidth = 8
             imageView.layer.borderColor = UIColor.ypGreen.cgColor
@@ -91,6 +94,8 @@ final class MovieQuizViewController: UIViewController {
                    self.showNextQuestionOrResults()
                }
         } else {
+            noButton.isEnabled = false
+            yesButton.isEnabled = false
             imageView.layer.borderWidth = 8
             imageView.layer.borderColor = UIColor.ypRed.cgColor
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
@@ -106,6 +111,8 @@ final class MovieQuizViewController: UIViewController {
         } else {
             currentQuestionIndex += 1
             imageView.layer.borderWidth = 0
+            noButton.isEnabled = true
+            yesButton.isEnabled = true
             
             let nextQuestion = questions[currentQuestionIndex]
             let viewModel = convert(model: nextQuestion)
@@ -122,6 +129,8 @@ final class MovieQuizViewController: UIViewController {
         alert.addAction(UIAlertAction(title: "Сыграть еще раз", style: .default){ _ in
             self.currentQuestionIndex = 0
             self.correctAnswers = 0
+            self.yesButton.isEnabled = true
+            self.noButton.isEnabled = true
             self.imageView.layer.borderWidth = 0
             let newGame = self.questions[self.currentQuestionIndex]
             let nGViewModel = self.convert(model: newGame)
