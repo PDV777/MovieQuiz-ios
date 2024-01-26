@@ -1,5 +1,34 @@
 import UIKit
 final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
+    // MARK: - Lifecycle
+    @IBOutlet private var counterLabel: UILabel!
+    @IBOutlet private var textLabel: UILabel!
+    @IBOutlet private var imageView: UIImageView!
+    @IBOutlet private var yesButton: UIButton!
+    @IBOutlet private var noButton: UIButton!
+    
+    private var currentQuestionIndex = 0
+    private var correctAnswers = 0
+    private let questionsAmount = 10
+    private var questionFactory: QuestionFactoryProtocol? = nil
+    private var currentQuestion:QuizQuestion?
+    private var alertPresenter:AlertPresenter?
+    private var statisticService: StatisticService?
+    
+    override var preferredStatusBarStyle: UIStatusBarStyle {
+        return .lightContent
+    }
+    override func viewDidLoad() {
+        statisticService = StatisticServiceImpl(userDefaults: UserDefaults())
+        alertPresenter = AlertPresenterImpl(viewController: self)
+        questionFactory = QuestionFactory(delegate:self)
+        questionFactory?.requestNextQuestion()
+        imageView.layer.masksToBounds = true
+        imageView.layer.cornerRadius = 20
+        questionFactory?.requestNextQuestion()
+        super.viewDidLoad()
+    }
+    
     // MARK: - QuestionFactoryDelegate
     func didReceiveNextQuestion(question: QuizQuestion?) {
         guard let question = question else {
@@ -11,25 +40,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             self?.show(quiz: viewModel)
         }
     }
-    // MARK: - Lifecycle
-    private var currentQuestionIndex = 0
-    private var correctAnswers = 0
-    private let questionsAmount = 10
-    private var questionFactory: QuestionFactoryProtocol? = nil
-    private var currentQuestion:QuizQuestion?
-    @IBOutlet private var counterLabel: UILabel!
-    @IBOutlet private var textLabel: UILabel!
-    @IBOutlet private var imageView: UIImageView!
-    @IBOutlet private var yesButton: UIButton!
-    @IBOutlet private var noButton: UIButton!
-    override func viewDidLoad() {
-        questionFactory = QuestionFactory(delegate:self)
-        questionFactory?.requestNextQuestion()
-        imageView.layer.masksToBounds = true
-        imageView.layer.cornerRadius = 20
-        questionFactory?.requestNextQuestion()
-        super.viewDidLoad()
-    }
+    
     private func convert(model:QuizQuestion) -> QuizStepViewModel {
         let questionStep = QuizStepViewModel(
             image: UIImage(named: model.image) ?? UIImage(),
@@ -51,7 +62,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             imageView.layer.borderColor = UIColor.ypGreen.cgColor
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 guard let self = self else {return}
-                self.showNextQuestionOrResults()
+                showNextQuestionOrResults()
             }
         } else {
             noButton.isEnabled = false
@@ -60,14 +71,14 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             imageView.layer.borderColor = UIColor.ypRed.cgColor
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 guard let self = self else {return}
-                self.showNextQuestionOrResults()
+                showNextQuestionOrResults()
             }
         }
     }
     private func showNextQuestionOrResults() {
         if currentQuestionIndex == questionsAmount - 1 {
-            showAlert()
-            
+            let quizResultsViewModel = makeQuizResultsViewModel()
+            showAlert(quiz: quizResultsViewModel)
         } else {
             currentQuestionIndex += 1
             imageView.layer.borderWidth = 0
@@ -76,30 +87,51 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             questionFactory?.requestNextQuestion()
         }
     }
-    private func showAlert() {
-        let alert = UIAlertController(title: "Раунд окончен!",
-                                      message: "Ваш результат \(correctAnswers)/\(questionsAmount)",
-                                      preferredStyle: .alert)
-        alert.addAction(UIAlertAction(title: "Сыграть еще раз", style: .default){ [weak self] _ in guard let self = self else {return}
-            self.currentQuestionIndex = 0
-            self.correctAnswers = 0
-            self.yesButton.isEnabled = true
-            self.noButton.isEnabled = true
-            self.imageView.layer.borderWidth = 0
-            questionFactory?.requestNextQuestion()
-            
-            
-        })
-        present(alert,animated: true)
-    }
-    @IBAction private func noButtonClicked(_ sender: Any) {
-        guard let currentQuestion = currentQuestion else {
-            return
+    private func makeQuizResultsViewModel() -> QuizResultsViewModel {
+        statisticService?.store(correct: correctAnswers, total: questionsAmount)
+        let gamesCount = statisticService?.gameCount ?? 0
+        let staticAccuracy = statisticService?.totalAccuracy ?? 0
+        guard let bestGame = statisticService?.bestGame else {
+            assertionFailure("error message")
+            return QuizResultsViewModel(title: "", text: "", buttonText: "")
         }
+        let title = "Этот раунд окончен!"
+        let text = """
+                      Ваш результат: \(correctAnswers)/\(questionsAmount)
+                      Количество сыгранных квизов: \(gamesCount)
+                      Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
+                      Средняя точность: \(String(format: "%.2f", staticAccuracy))%
+                      """
+        let buttonText = "Сыграть еще раз"
+        return QuizResultsViewModel(title: title, text: text, buttonText: buttonText)
+    }
+    private func showAlert(quiz: QuizResultsViewModel) {
+        let alertModel = AlertModel(
+            title: quiz.title,
+            message: quiz.text,
+            buttonText: quiz.buttonText,
+            buttonAction: { [weak self] in
+                self?.resetQuiz()
+            }
+        )
+        alertPresenter?.show(alertModel: alertModel)
+    }
+    private func resetQuiz() {
+        currentQuestionIndex = 0
+        correctAnswers = 0
+        yesButton.isEnabled = true
+        noButton.isEnabled = true
+        imageView.layer.borderWidth = 0
+        questionFactory?.requestNextQuestion()
+    }
+    
+    @IBAction func noButtonClicked(_ sender: Any) {   guard let currentQuestion = currentQuestion else {
+        return
+    }
         let givenAnswer = false
         showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
     }
-    @IBAction private func yesButtonClicked(_ sender: Any) {
+    @IBAction func yesButtonClicked(_ sender: Any) {
         guard let currentQuestion = currentQuestion else{
             return
         }
@@ -108,76 +140,3 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     }
 }
 
-
-
-
-
-
-
-
-
-
-
-/*
- Mock-данные
- 
- 
- Картинка: The Godfather
- Настоящий рейтинг: 9,2
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: ДА
- 
- 
- Картинка: The Dark Knight
- Настоящий рейтинг: 9
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: ДА
- 
- 
- Картинка: Kill Bill
- Настоящий рейтинг: 8,1
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: ДА
- 
- 
- Картинка: The Avengers
- Настоящий рейтинг: 8
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: ДА
- 
- 
- Картинка: Deadpool
- Настоящий рейтинг: 8
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: ДА
- 
- 
- Картинка: The Green Knight
- Настоящий рейтинг: 6,6
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: ДА
- 
- 
- Картинка: Old
- Настоящий рейтинг: 5,8
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: НЕТ
- 
- 
- Картинка: The Ice Age Adventures of Buck Wild
- Настоящий рейтинг: 4,3
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: НЕТ
- 
- 
- Картинка: Tesla
- Настоящий рейтинг: 5,1
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: НЕТ
- 
- 
- Картинка: Vivarium
- Настоящий рейтинг: 5,8
- Вопрос: Рейтинг этого фильма больше чем 6?
- Ответ: НЕТ
- */
