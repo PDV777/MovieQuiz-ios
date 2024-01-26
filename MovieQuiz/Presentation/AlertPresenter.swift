@@ -6,15 +6,18 @@
 //
 
 import UIKit
+
 protocol AlertPresenter {
     func show(alertModel: AlertModel)
 }
+
 final class AlertPresenterImpl {
     private weak var viewController:UIViewController?
     init(viewController: UIViewController? = nil) {
         self.viewController = viewController
     }
 }
+
 extension AlertPresenterImpl:AlertPresenter {
     func show(alertModel: AlertModel) {
         let alert = UIAlertController(
