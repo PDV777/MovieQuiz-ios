@@ -7,7 +7,7 @@
 
 import Foundation
 
-class QuestionFactory:QuestionFactoryProtocol {
+final class QuestionFactory:QuestionFactoryProtocol {
     private let moviesLoader: MoviesLoading
     private weak var delegate:QuestionFactoryDelegate?
     init(moviesLoader: MoviesLoading, delegate: QuestionFactoryDelegate?) {
@@ -28,7 +28,7 @@ class QuestionFactory:QuestionFactoryProtocol {
                 print("Failed to load image")
             }
             let rating = Float(movie.rating) ?? 0
-            let randRating: Float = Float(arc4random_uniform(40) + 65) / 10
+            let randRating: Float = Float(arc4random_uniform(30) + 65) / 10
             let text = "Рейтинг этого фильма больше чем \(randRating)?"
             let correctAnswer = rating > randRating
             let quetion = QuizQuestion(image: imageData,
