@@ -11,8 +11,10 @@ protocol StatisticService {
     var totalAccuracy: Double {get}
     var gameCount:Int {get}
     var bestGame:BestGame? {get}
+    
     func store(correct count:Int,total amount:Int)
 }
+
 final class StatisticServiceImpl {
     private enum Keys:String {
         case correct,
@@ -20,6 +22,7 @@ final class StatisticServiceImpl {
              bestGame,
              gamesCount
     }
+    
     private let userDefaults:UserDefaults
     private let decoder:JSONDecoder
     private let encoder:JSONEncoder
@@ -35,6 +38,7 @@ final class StatisticServiceImpl {
         self.dateProvider = dateProvider
     }
 }
+
 extension StatisticServiceImpl: StatisticService {
     var gameCount: Int {
         get {

@@ -6,6 +6,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     @IBOutlet private var imageView: UIImageView!
     @IBOutlet private var yesButton: UIButton!
     @IBOutlet private var noButton: UIButton!
+    @IBOutlet private var activityIndicator: UIActivityIndicatorView!
     
     private var currentQuestionIndex = 0
     private var correctAnswers = 0
@@ -19,13 +20,13 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         return .lightContent
     }
     override func viewDidLoad() {
+        showLoadingIndicator()
         statisticService = StatisticServiceImpl(userDefaults: UserDefaults())
         alertPresenter = AlertPresenterImpl(viewController: self)
-        questionFactory = QuestionFactory(delegate:self)
-        questionFactory?.requestNextQuestion()
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate:self)
+        questionFactory?.loadData()
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = 20
-        questionFactory?.requestNextQuestion()
         super.viewDidLoad()
     }
     
@@ -40,10 +41,17 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             self?.show(quiz: viewModel)
         }
     }
+    func didLoadDatFromServer() {
+        activityIndicator.isHidden = true
+        questionFactory?.requestNextQuestion()
+    }
+    func didFailToLoadData(with error: Error) {
+        showNetworkError(message: error.localizedDescription)
+    }
     
     private func convert(model:QuizQuestion) -> QuizStepViewModel {
         let questionStep = QuizStepViewModel(
-            image: UIImage(named: model.image) ?? UIImage(),
+            image: UIImage(data: model.image) ?? UIImage(),
             question: model.text,
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
         return questionStep
@@ -123,6 +131,27 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         noButton.isEnabled = true
         imageView.layer.borderWidth = 0
         questionFactory?.requestNextQuestion()
+    }
+    private func showLoadingIndicator() {
+        activityIndicator.isHidden = false
+        activityIndicator.startAnimating()
+    }
+    private func hideLoadingIndicator() {
+        activityIndicator.isHidden = true
+        activityIndicator.stopAnimating()
+    }
+    private func showNetworkError(message:String) {
+        hideLoadingIndicator()
+        let model = AlertModel(title: "Ошибка",
+                               message: message,
+                               buttonText: "Попробовать еще раз",
+                               buttonAction:  { [weak self] in
+            self?.currentQuestionIndex = 0
+            self?.correctAnswers = 0
+            
+            self?.questionFactory?.requestNextQuestion()
+        })
+        alertPresenter?.show(alertModel: model)
     }
     
     @IBAction func noButtonClicked(_ sender: Any) {   guard let currentQuestion = currentQuestion else {
