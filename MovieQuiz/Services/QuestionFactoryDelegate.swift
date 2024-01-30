@@ -8,4 +8,7 @@ import UIKit
 
 protocol QuestionFactoryDelegate:AnyObject {
     func didReceiveNextQuestion(question:QuizQuestion?)
+    func didLoadDatFromServer()
+    func didFailToLoadData(with error:Error)
+    
 }
