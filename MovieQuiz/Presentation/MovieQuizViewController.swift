@@ -19,6 +19,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         return .lightContent
     }
     override func viewDidLoad() {
+        presenter.viewController = self
         showLoadingIndicator()
         statisticService = StatisticServiceImpl(userDefaults: UserDefaults())
         alertPresenter = AlertPresenterImpl(viewController: self)
@@ -53,7 +54,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         imageView.image = step.image
         textLabel.text = step.question
     }
-    private func showAnswerResult(isCorrect: Bool) {
+    /*private*/ func showAnswerResult(isCorrect: Bool) {
         if isCorrect == true {
             noButton.isEnabled = false
             yesButton.isEnabled = false
@@ -146,18 +147,13 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         alertPresenter?.show(alertModel: model)
     }
     
-    @IBAction func noButtonClicked(_ sender: Any) {   guard let currentQuestion = currentQuestion else {
-        return
-    }
-        let givenAnswer = false
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+    @IBAction func noButtonClicked(_ sender: Any) {
+        presenter.currentQuestion = currentQuestion
+        presenter.noButtonClicked()
     }
     @IBAction func yesButtonClicked(_ sender: Any) {
-        guard let currentQuestion = currentQuestion else{
-            return
-        }
-        let givenAnswer = true
-        showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+        presenter.currentQuestion = currentQuestion
+        presenter.yesButtonClicked()
     }
 }
 
