@@ -7,11 +7,23 @@
 
 import UIKit
 
-final class MovieQuizPresenter {
+final class MovieQuizPresenter: QuestionFactoryDelegate {
+    
+    var currentQuestion:QuizQuestion?
+    
+    private var questionFactory: QuestionFactoryProtocol?
+    
+    weak var viewController: MovieQuizViewController?
     
     var statisticService = StatisticServiceImpl(userDefaults: UserDefaults())
-    var currentQuestion:QuizQuestion?
-    weak var viewController: MovieQuizViewController?
+    init(viewController: MovieQuizViewController) {
+           self.viewController = viewController
+           
+           questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
+           questionFactory?.loadData()
+           viewController.showLoadingIndicator()
+       }
+    
     let questionsAmount = 10
     private var currentQuestionIndex = 0
     var correctAnswers = 0
@@ -26,11 +38,21 @@ final class MovieQuizPresenter {
             self?.viewController?.show(quiz: viewModel)
         }
     }
+    func didLoadDatFromServer() {
+        viewController?.hideLoadingIndicator()
+        questionFactory?.requestNextQuestion()
+    }
+    
+    func didFailToLoadData(with error: Error) {
+        viewController?.showNetworkError(message: error.localizedDescription)
+    }
+    
     func isLastQuestion() -> Bool {
         currentQuestionIndex == questionsAmount
     }
-    func resetQuestionIndex() {
+    func restartGame() {
         currentQuestionIndex = 0
+        correctAnswers = 0
     }
     func switchToNextQuestion() {
         currentQuestionIndex += 1
@@ -50,9 +72,17 @@ final class MovieQuizPresenter {
             viewController?.imageView.layer.borderWidth = 0
             viewController?.noButton.isEnabled = true
             viewController?.yesButton.isEnabled = true
-            viewController?.questionFactory?.requestNextQuestion()
+           questionFactory?.requestNextQuestion()
         }
     }
+    func resetQuiz() {
+        restartGame()
+        viewController?.yesButton.isEnabled = true
+        viewController?.noButton.isEnabled = true
+        viewController?.imageView.layer.borderWidth = 0
+        questionFactory?.requestNextQuestion()
+    }
+    
         private func makeQuizResultsViewModel() -> QuizResultsViewModel {
             statisticService.store(correct: correctAnswers, total: questionsAmount)
             let gamesCount = statisticService.gameCount
@@ -76,6 +106,10 @@ final class MovieQuizPresenter {
             return
         }
         let givenAnswer = isYes
+        let isCorrect =  givenAnswer == currentQuestion.correctAnswer
+        if isCorrect {
+            correctAnswers += 1
+        }
         viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
     }
     

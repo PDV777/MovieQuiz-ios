@@ -1,5 +1,5 @@
 import UIKit
-final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
+final class MovieQuizViewController: UIViewController/*,QuestionFactoryDelegate*/ {
     // MARK: - IBOutlets
     @IBOutlet private var counterLabel: UILabel!
     @IBOutlet private var textLabel: UILabel!
@@ -8,8 +8,8 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     @IBOutlet  var noButton: UIButton!
     @IBOutlet private var activityIndicator: UIActivityIndicatorView!
     // MARK: - Переменные сторонних сущностей
-    private let presenter = MovieQuizPresenter()
-    var questionFactory: QuestionFactoryProtocol? = nil
+    private var presenter: MovieQuizPresenter!
+//    var questionFactory: QuestionFactoryProtocol? = nil
     private var alertPresenter:AlertPresenter?
     private var statisticService: StatisticService?
     
@@ -18,12 +18,9 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     }
     // MARK: - Lifecycle
     override func viewDidLoad() {
-        presenter.viewController = self
+        presenter = MovieQuizPresenter(viewController: self)
         showLoadingIndicator()
-        statisticService = StatisticServiceImpl(userDefaults: UserDefaults())
         alertPresenter = AlertPresenterImpl(viewController: self)
-        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate:self)
-        questionFactory?.loadData()
         imageView.layer.masksToBounds = true
         imageView.layer.cornerRadius = 20
         super.viewDidLoad()
@@ -33,13 +30,13 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     func didReceiveNextQuestion(question: QuizQuestion?) {
         presenter.didReceiveNextQuestion(question: question)
     }
-    func didLoadDatFromServer() {
-        hideLoadingIndicator()
-        questionFactory?.requestNextQuestion()
-    }
-    func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription)
-    }
+//    func didLoadDatFromServer() {
+//        hideLoadingIndicator()
+//        questionFactory?.requestNextQuestion()
+//    }
+//    func didFailToLoadData(with error: Error) {
+//        showNetworkError(message: error.localizedDescription)
+//    }
     
     func show(quiz step:QuizStepViewModel){
         counterLabel.text = step.questionNumber
@@ -48,7 +45,6 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     }
     func showAnswerResult(isCorrect: Bool) {
         if isCorrect == true {
-            presenter.correctAnswers += 1
             noButton.isEnabled = false
             yesButton.isEnabled = false
             presenter.switchToNextQuestion()
@@ -76,18 +72,10 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             message: quiz.text,
             buttonText: quiz.buttonText,
             buttonAction: { [weak self] in
-                self?.resetQuiz()
+                self?.presenter.resetQuiz()
             }
         )
         alertPresenter?.show(alertModel: alertModel)
-    }
-    func resetQuiz() {
-        presenter.resetQuestionIndex()
-        presenter.correctAnswers = 0
-        yesButton.isEnabled = true
-        noButton.isEnabled = true
-        imageView.layer.borderWidth = 0
-        questionFactory?.requestNextQuestion()
     }
     func showLoadingIndicator() {
         activityIndicator.isHidden = false
@@ -103,10 +91,8 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
                                message: message,
                                buttonText: "Попробовать еще раз",
                                buttonAction:  { [weak self] in
-            self?.presenter.resetQuestionIndex()
-            self?.presenter.resetQuestionIndex()
+            self?.presenter.restartGame()
             
-            self?.questionFactory?.requestNextQuestion()
         })
         alertPresenter?.show(alertModel: model)
     }
