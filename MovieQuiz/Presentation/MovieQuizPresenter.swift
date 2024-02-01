@@ -8,12 +8,26 @@
 import UIKit
 
 final class MovieQuizPresenter {
+    
+    var statisticService = StatisticServiceImpl(userDefaults: UserDefaults())
     var currentQuestion:QuizQuestion?
     weak var viewController: MovieQuizViewController?
     let questionsAmount = 10
     private var currentQuestionIndex = 0
+    var correctAnswers = 0
+    
+    func didReceiveNextQuestion(question: QuizQuestion?) {
+        guard let question = question else {
+            return
+        }
+        currentQuestion = question
+        let viewModel = convert(model: question)
+        DispatchQueue.main.async{ [weak self] in
+            self?.viewController?.show(quiz: viewModel)
+        }
+    }
     func isLastQuestion() -> Bool {
-        currentQuestionIndex == questionsAmount - 1
+        currentQuestionIndex == questionsAmount
     }
     func resetQuestionIndex() {
         currentQuestionIndex = 0
@@ -28,19 +42,47 @@ final class MovieQuizPresenter {
             questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
         return questionStep
     }
-    
-func yesButtonClicked() {
+    func showNextQuestionOrResults() {
+        if self.isLastQuestion() {
+            let quizResultsViewModel = makeQuizResultsViewModel()
+            self.viewController?.showAlert(quiz: quizResultsViewModel)
+        } else {
+            viewController?.imageView.layer.borderWidth = 0
+            viewController?.noButton.isEnabled = true
+            viewController?.yesButton.isEnabled = true
+            viewController?.questionFactory?.requestNextQuestion()
+        }
+    }
+        private func makeQuizResultsViewModel() -> QuizResultsViewModel {
+            statisticService.store(correct: correctAnswers, total: questionsAmount)
+            let gamesCount = statisticService.gameCount
+            let staticAccuracy = statisticService.totalAccuracy
+            guard let bestGame = statisticService.bestGame else {
+                assertionFailure("error message")
+                return QuizResultsViewModel(title: "", text: "", buttonText: "")
+            }
+            let title = "Этот раунд окончен!"
+            let text = """
+                          Ваш результат: \(correctAnswers)/\(questionsAmount)
+                          Количество сыгранных квизов: \(gamesCount)
+                          Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
+                          Средняя точность: \(String(format: "%.2f", staticAccuracy))%
+                          """
+            let buttonText = "Сыграть ещё раз"
+            return QuizResultsViewModel(title: title, text: text, buttonText: buttonText)
+        }
+    private func didAnswer(isYes:Bool) {
         guard let currentQuestion = currentQuestion else{
             return
         }
-        let givenAnswer = true
+        let givenAnswer = isYes
         viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
     }
-func noButtonClicked() {
-    guard let currentQuestion = currentQuestion else {
-        return
+    
+    func yesButtonClicked() {
+        didAnswer(isYes: true)
     }
-        let givenAnswer = false
-    viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
+    func noButtonClicked() {
+        didAnswer(isYes: false)
     }
 }
