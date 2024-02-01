@@ -24,6 +24,7 @@ extension AlertPresenterImpl:AlertPresenter {
             title: alertModel.title,
             message: alertModel.message,
             preferredStyle: .alert)
+        alert.view.accessibilityIdentifier = "AlertIdent"
         alert.addAction(UIAlertAction(title: alertModel.buttonText, style: .default) { [ alertModel] _ in
             alertModel.buttonAction()
         })

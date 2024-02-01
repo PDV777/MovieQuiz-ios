@@ -8,9 +8,8 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
     @IBOutlet private var noButton: UIButton!
     @IBOutlet private var activityIndicator: UIActivityIndicatorView!
     
-    private var currentQuestionIndex = 0
+    private let presenter = MovieQuizPresenter()
     private var correctAnswers = 0
-    private let questionsAmount = 10
     private var questionFactory: QuestionFactoryProtocol? = nil
     private var currentQuestion:QuizQuestion?
     private var alertPresenter:AlertPresenter?
@@ -36,7 +35,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
             return
         }
         currentQuestion = question
-        let viewModel = convert(model: question)
+        let viewModel = presenter.convert(model: question)
         DispatchQueue.main.async{ [weak self] in
             self?.show(quiz: viewModel)
         }
@@ -49,13 +48,6 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         showNetworkError(message: error.localizedDescription)
     }
     
-    private func convert(model:QuizQuestion) -> QuizStepViewModel {
-        let questionStep = QuizStepViewModel(
-            image: UIImage(data: model.image) ?? UIImage(),
-            question: model.text,
-            questionNumber: "\(currentQuestionIndex + 1)/\(questionsAmount)")
-        return questionStep
-    }
     private func show(quiz step:QuizStepViewModel){
         counterLabel.text = step.questionNumber
         imageView.image = step.image
@@ -84,11 +76,11 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         }
     }
     private func showNextQuestionOrResults() {
-        if currentQuestionIndex == questionsAmount - 1 {
+        if presenter.isLastQuestion() {
             let quizResultsViewModel = makeQuizResultsViewModel()
             showAlert(quiz: quizResultsViewModel)
         } else {
-            currentQuestionIndex += 1
+            presenter.switchToNextQuestion()
             imageView.layer.borderWidth = 0
             noButton.isEnabled = true
             yesButton.isEnabled = true
@@ -96,7 +88,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         }
     }
     private func makeQuizResultsViewModel() -> QuizResultsViewModel {
-        statisticService?.store(correct: correctAnswers, total: questionsAmount)
+        statisticService?.store(correct: correctAnswers, total: presenter.questionsAmount)
         let gamesCount = statisticService?.gameCount ?? 0
         let staticAccuracy = statisticService?.totalAccuracy ?? 0
         guard let bestGame = statisticService?.bestGame else {
@@ -105,12 +97,12 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         }
         let title = "Этот раунд окончен!"
         let text = """
-                      Ваш результат: \(correctAnswers)/\(questionsAmount)
+                      Ваш результат: \(correctAnswers)/\(presenter.questionsAmount)
                       Количество сыгранных квизов: \(gamesCount)
                       Рекорд: \(bestGame.correct)/\(bestGame.total) \(bestGame.date.dateTimeString)
                       Средняя точность: \(String(format: "%.2f", staticAccuracy))%
                       """
-        let buttonText = "Сыграть еще раз"
+        let buttonText = "Сыграть ещё раз"
         return QuizResultsViewModel(title: title, text: text, buttonText: buttonText)
     }
     private func showAlert(quiz: QuizResultsViewModel) {
@@ -125,7 +117,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
         alertPresenter?.show(alertModel: alertModel)
     }
     private func resetQuiz() {
-        currentQuestionIndex = 0
+        presenter.resetQuestionIndex()
         correctAnswers = 0
         yesButton.isEnabled = true
         noButton.isEnabled = true
@@ -146,7 +138,7 @@ final class MovieQuizViewController: UIViewController,QuestionFactoryDelegate {
                                message: message,
                                buttonText: "Попробовать еще раз",
                                buttonAction:  { [weak self] in
-            self?.currentQuestionIndex = 0
+            self?.presenter.resetQuestionIndex()
             self?.correctAnswers = 0
             
             self?.questionFactory?.requestNextQuestion()
