@@ -1,22 +1,22 @@
 import UIKit
-final class MovieQuizViewController: UIViewController/*,QuestionFactoryDelegate*/ {
+final class MovieQuizViewController: UIViewController,MovieQuizViewControllerProtocol {
     // MARK: - IBOutlets
+    
     @IBOutlet private var counterLabel: UILabel!
     @IBOutlet private var textLabel: UILabel!
-    @IBOutlet  var imageView: UIImageView!
-    @IBOutlet  var yesButton: UIButton!
-    @IBOutlet  var noButton: UIButton!
+    @IBOutlet private var imageView: UIImageView!
+    @IBOutlet private var yesButton: UIButton!
+    @IBOutlet private var noButton: UIButton!
     @IBOutlet private var activityIndicator: UIActivityIndicatorView!
     // MARK: - Переменные сторонних сущностей
-    private var presenter: MovieQuizPresenter!
-//    var questionFactory: QuestionFactoryProtocol? = nil
-    private var alertPresenter:AlertPresenter?
-    private var statisticService: StatisticService?
     
+    private var presenter: MovieQuizPresenter!
+    private var alertPresenter:AlertPresenter?
     override var preferredStatusBarStyle: UIStatusBarStyle {
         return .lightContent
     }
     // MARK: - Lifecycle
+    
     override func viewDidLoad() {
         presenter = MovieQuizPresenter(viewController: self)
         showLoadingIndicator()
@@ -25,46 +25,20 @@ final class MovieQuizViewController: UIViewController/*,QuestionFactoryDelegate*
         imageView.layer.cornerRadius = 20
         super.viewDidLoad()
     }
+    // MARK: - Private function
     
-    // MARK: - QuestionFactoryDelegate
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        presenter.didReceiveNextQuestion(question: question)
+    private func resetQuiz() {
+        presenter.restartGame()
+        yesButton.isEnabled = true
+        noButton.isEnabled = true
+        imageView.layer.borderWidth = 0
     }
-//    func didLoadDatFromServer() {
-//        hideLoadingIndicator()
-//        questionFactory?.requestNextQuestion()
-//    }
-//    func didFailToLoadData(with error: Error) {
-//        showNetworkError(message: error.localizedDescription)
-//    }
+    // MARK: - Functions
     
     func show(quiz step:QuizStepViewModel){
         counterLabel.text = step.questionNumber
         imageView.image = step.image
         textLabel.text = step.question
-    }
-    func showAnswerResult(isCorrect: Bool) {
-        if isCorrect == true {
-            noButton.isEnabled = false
-            yesButton.isEnabled = false
-            presenter.switchToNextQuestion()
-            imageView.layer.borderWidth = 8
-            imageView.layer.borderColor = UIColor.ypGreen.cgColor
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                guard let self = self else {return}
-                presenter.showNextQuestionOrResults()
-            }
-        } else {
-            presenter.switchToNextQuestion()
-            noButton.isEnabled = false
-            yesButton.isEnabled = false
-            imageView.layer.borderWidth = 8
-            imageView.layer.borderColor = UIColor.ypRed.cgColor
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                guard let self = self else {return}
-                presenter.showNextQuestionOrResults()
-            }
-        }
     }
     func showAlert(quiz: QuizResultsViewModel) {
         let alertModel = AlertModel(
@@ -72,7 +46,7 @@ final class MovieQuizViewController: UIViewController/*,QuestionFactoryDelegate*
             message: quiz.text,
             buttonText: quiz.buttonText,
             buttonAction: { [weak self] in
-                self?.presenter.resetQuiz()
+                self?.resetQuiz()
             }
         )
         alertPresenter?.show(alertModel: alertModel)
@@ -96,6 +70,17 @@ final class MovieQuizViewController: UIViewController/*,QuestionFactoryDelegate*
         })
         alertPresenter?.show(alertModel: model)
     }
+    func highlightImageBorder(isCorrectAnswer: Bool) {
+        imageView.layer.masksToBounds = true
+        imageView.layer.borderWidth = 8
+        yesButton.isEnabled = false
+        noButton.isEnabled = false
+        imageView.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
+        imageView.layer.borderWidth = 0
+        yesButton.isEnabled = true
+        noButton.isEnabled = true
+    }
+    // MARK: - Actions
     
     @IBAction func noButtonClicked(_ sender: Any) {
         presenter.noButtonClicked()
