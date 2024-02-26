@@ -76,9 +76,12 @@ final class MovieQuizViewController: UIViewController,MovieQuizViewControllerPro
         yesButton.isEnabled = false
         noButton.isEnabled = false
         imageView.layer.borderColor = isCorrectAnswer ? UIColor.ypGreen.cgColor : UIColor.ypRed.cgColor
-        imageView.layer.borderWidth = 0
-        yesButton.isEnabled = true
-        noButton.isEnabled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            guard let self = self else { return }
+            imageView.layer.borderWidth = 0
+            yesButton.isEnabled = true
+            noButton.isEnabled = true
+        }
     }
     // MARK: - Actions
     
